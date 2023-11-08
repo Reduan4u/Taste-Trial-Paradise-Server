@@ -11,8 +11,11 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: ['http://localhost:5173'],
-    credentials: true
+    origin: [
+        'http://localhost:5173',
+        'https://taste-trial-paradise.web.app/'
+    ],
+    credentials: true,
 }));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mt6zv6m.mongodb.net/?retryWrites=true&w=majority`;
@@ -47,7 +50,6 @@ async function run() {
                 .send({ success: true })
 
         })
-
         /*-------------------- Foods--------------------  */
         const foodCollection = client.db('restaurant').collection('foods');
         //Food read
