@@ -10,13 +10,15 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'https://taste-trial-paradise.web.app/'
-    ],
-    credentials: true,
-}));
+app.use(cors(
+    /*  {
+     origin: [
+         'http://localhost:5173',
+         'https://taste-trial-paradise.web.app'
+     ],
+     credentials: true,
+ } */
+));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mt6zv6m.mongodb.net/?retryWrites=true&w=majority`;
 console.log(uri);
@@ -33,7 +35,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         // jwt token
         app.post('/jwt', async (req, res) => {
@@ -152,8 +154,8 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
