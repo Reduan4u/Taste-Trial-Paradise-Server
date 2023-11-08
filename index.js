@@ -1,14 +1,19 @@
 const express = require('express');
 const app = express();
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
-const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cookieParser());
+app.use(cors({
+    origin: ['http://localhost:5173'],
+    credentials: true
+}));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mt6zv6m.mongodb.net/?retryWrites=true&w=majority`;
 console.log(uri);
@@ -27,10 +32,24 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-        // Connect Collection
-        const foodCollection = client.db('restaurant').collection('foods');
+        // jwt token
+        app.post('/jwt', async (req, res) => {
+            //crating token and send to client
+
+            const user = req.body
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: 60 * 60 });
+            console.log(token);
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: false,
+                sameSite: 'none'
+            })
+                .send({ success: true })
+
+        })
 
         /*-------------------- Foods--------------------  */
+        const foodCollection = client.db('restaurant').collection('foods');
         //Food read
         app.get('/foods', async (req, res) => {
             const cursor = foodCollection.find();
@@ -51,7 +70,6 @@ async function run() {
             const result = await foodCollection.insertOne(newFood);
             res.send(result);
         })
-
 
         //food update (showing)
         app.put('/foods/:id', async (req, res) => {
@@ -81,9 +99,8 @@ async function run() {
 
         /*--------------------Ordered Foods--------------------  */
         const orderedFoodsCollection = client.db('restaurant').collection('orderedFoods');
-
-
         // ordered food add
+
         app.post('/orderedFoods', async (req, res) => {
             const orderedFoods = req.body;
             console.log(orderedFoods);
@@ -93,10 +110,16 @@ async function run() {
 
         // ordered food seen
         app.get('/orderedFoods', async (req, res) => {
-            const cursor = orderedFoodsCollection.find();
-            const result = await cursor.toArray();
+            // console.log(req, query, email);
+            console.log('hello hello hello', req.cookies.token);
+            let query = {};
+            if (req.query?.email) {
+                query = { email: req.query.email }
+            }
+            const result = await orderedFoodsCollection.find(query).toArray();
             res.send(result);
         });
+
         app.get("/orderedFoods/:id", async (req, res) => {
             const id = req.params.id;
             const query = {
@@ -122,21 +145,7 @@ async function run() {
 
 
 
-        // jwt token
-        app.post('/access-token', async (req, res) => {
-            //crating token and send to client
 
-            const user = req.body
-            const token = jwt.sign(user, process.env.DB_USER, { expiresIn: 60 * 60 });
-            console.log(token);
-            res.cookie('token', {
-                httpOnly: true,
-                secure: true,
-                sameSite: 'none'
-            })
-                .send({ success: true })
-
-        })
 
 
 
