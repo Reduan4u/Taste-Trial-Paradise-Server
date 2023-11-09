@@ -11,17 +11,34 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors(
-    /*  {
-     origin: [
-         'http://localhost:5173',
-         'https://taste-trial-paradise.web.app'
-     ],
-     credentials: true,
- } */
+    {
+        origin: [
+            'http://localhost:5173',
+            'https://taste-trial-paradise.web.app'
+        ],
+        credentials: true,
+    }
 ));
 
+const verify = (req, res, next) => {
+    const { token } = req.cookies;
+    console.log("token", token);
+    if (!token) {
+        return res.status(401).send({ message: "unauthorized" });
+    }
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+        if (err) {
+            res.status(403).send({ message: "forbidden" });
+        }
+        req.user = decoded;
+        next();
+    });
+};
+
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mt6zv6m.mongodb.net/?retryWrites=true&w=majority`;
-console.log(uri);
+//console.log(uri);
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -45,10 +62,11 @@ async function run() {
             console.log(token);
             res.cookie('token', token, {
                 httpOnly: true,
-                secure: false,
-                sameSite: 'none'
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+
             })
-                .send({ success: true })
+                .send({ success: true });
         })
 
 
@@ -148,23 +166,31 @@ async function run() {
 
         app.post('/orderedFoods', async (req, res) => {
             const orderedFoods = req.body;
-
             console.log(orderedFoods);
             const result = await orderedFoodsCollection.insertOne(orderedFoods);
             res.send(result);
         })
 
         // ordered food seen
-        app.get('/orderedFoods', async (req, res) => {
-            // console.log(req, query, email);
-            console.log('hello hello hello', req.cookies.token);
-            let query = {};
-            if (req.query?.email) {
-                query = { email: req.query.email }
+        app.get("/orderedFoods", verify, async (req, res) => {
+
+            /* const user = req.body.email;
+            console.log(user, req.user.email);
+
+            if (user !== req.user.email) {
+                return res.status(403).send({ message: 'forbidden access' })
             }
-            const result = await orderedFoodsCollection.find(query).toArray();
+
+            let query = {};
+            if (req.query.userEmail) {
+                query = { userEmail: req?.query.userEmail };
+            } */
+            const result = await orderedFoodsCollection.find().toArray();
             res.send(result);
         });
+
+
+
 
         app.get("/orderedFoods/:id", async (req, res) => {
             const id = req.params.id;
@@ -197,7 +223,7 @@ async function run() {
 
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
-        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
