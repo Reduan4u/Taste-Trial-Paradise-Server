@@ -40,7 +40,6 @@ async function run() {
         // jwt token
         app.post('/jwt', async (req, res) => {
             //crating token and send to client
-
             const user = req.body
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: 60 * 60 });
             console.log(token);
@@ -50,16 +49,58 @@ async function run() {
                 sameSite: 'none'
             })
                 .send({ success: true })
-
         })
+
+
+
+
+
         /*-------------------- Foods--------------------  */
         const foodCollection = client.db('restaurant').collection('foods');
+
+
         //Food read
         app.get('/foods', async (req, res) => {
-            const cursor = foodCollection.find();
-            const result = await cursor.toArray();
+            const page = parseInt(req.query.page);
+            const size = parseInt(req.query.size);
+            let queryObj = {}
+            //let sortObj = {}
+            const category = req.query.category;
+            const sortField = req.query.sortField;
+            const sortOrder = req.query.sortOrder;
+            const priceFilter = req.query.price;
+            const countryFilter = req.query.country;
+
+            if (category) {
+                queryObj.category = category;
+            }
+            if (sortField && sortOrder) {
+                sortObj[sortField] = sortOrder;
+            }
+            if (priceFilter) {
+                queryObj.price = { $lte: parseFloat(priceFilter) };
+            }
+            if (countryFilter) {
+                queryObj.country = countryFilter;
+            }
+
+            const cursor = foodCollection.find(queryObj).sort();
+            const result = await cursor
+                .skip(page * size)
+                .limit(size)
+                .toArray();
             res.send(result);
         });
+
+
+
+        // foods count
+        app.get('/foodsCount', async (req, res) => {
+            const count = await foodCollection.estimatedDocumentCount();
+            res.send({ count });
+        })
+
+
         // Single Food read
         app.get('/foods/:id', async (req, res) => {
             const id = req.params.id;
@@ -107,6 +148,7 @@ async function run() {
 
         app.post('/orderedFoods', async (req, res) => {
             const orderedFoods = req.body;
+
             console.log(orderedFoods);
             const result = await orderedFoodsCollection.insertOne(orderedFoods);
             res.send(result);
